@@ -1,0 +1,16 @@
+
+;
+; BIND data file for local loopback interface
+;
+$TTL	604800
+@	IN	SOA	dns.m2l.asso. root.dns.m2l.asso. (
+			      2		; Serial
+			 604800		; Refresh
+			  86400		; Retry
+			2419200		; Expire
+			 604800 )	; Negative Cache TTL
+;
+@	IN	NS	dns.m2l.asso.
+dns	IN	A	10.54.2.1
+nextcloud	IN	A	10.54.2.2
+glpi	IN	A	10.54.2.3

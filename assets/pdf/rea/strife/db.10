@@ -1,0 +1,16 @@
+;
+; BIND reverse data file for local loopback interface
+;
+$TTL	604800
+@	IN	SOA	dns.m2l.asso. dns.m2l.asso. (
+			      1		; Serial
+			 604800		; Refresh
+			  86400		; Retry
+			2419200		; Expire
+			 604800 )	; Negative Cache TTL
+;
+@	IN	NS	dns.m2l.asso.
+1	IN	PTR	dns.m2l.asso.
+2	IN	PTR	nextcloud.m2l.asso.
+3	IN	PTR	glpi.m2l.asso.
+4	IN	PTR	zabbix.m2l.asso.
