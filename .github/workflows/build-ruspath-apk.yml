@@ -1,0 +1,60 @@
+name: Build RusPath APK
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'russian_learning_app/**'
+      - '.github/workflows/build-ruspath-apk.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: russian_learning_app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruspath-apk
+          path: russian_learning_app/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 90
+
+      - name: Publish/update "latest" release with the APK
+        if: github.ref_name == 'claude/russian-learning-apk-app-nmxijm' || github.ref_name == 'main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ruspath-latest
+          name: RusPath — dernier APK
+          body: |
+            APK compilé automatiquement depuis le commit ${{ github.sha }}.
+            Télécharge `app-release.apk` ci-dessous et installe-le sur ton téléphone Android
+            (active "Sources inconnues" si Android te le demande).
+          files: russian_learning_app/build/app/outputs/flutter-apk/app-release.apk
+          prerelease: true
