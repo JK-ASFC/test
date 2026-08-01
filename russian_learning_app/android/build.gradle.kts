@@ -20,28 +20,26 @@ subprojects {
 }
 
 // Some plugins (flutter_timezone, flutter_tts, speech_to_text) still apply
-// their own old-style Kotlin Gradle plugin with a Kotlin JVM target that
-// doesn't match the Java target AGP picks for their Android library module,
-// which fails the build with "Inconsistent JVM Target Compatibility". A
-// plain configureEach lost to those plugins' own explicit
-// compileOptions.sourceCompatibility (applied later in the same
-// configuration pass), so this needs afterEvaluate to run after the
-// plugin's own build.gradle has already set its (wrong) value.
+// their own old-style Kotlin Gradle plugin without an explicit Kotlin JVM
+// target, so it falls back to the Kotlin compiler's own default (1.8),
+// while AGP compiles their Java sources against Java 11 (these plugins do
+// set compileOptions.sourceCompatibility = VERSION_11 themselves) - two
+// different CI runs confirmed forcing the Java side back up to 17 from
+// here never sticks (AGP/KGP re-assert 11 for Java later in their own
+// internal evaluation, no matter whether this uses configureEach or
+// afterEvaluate), so instead of fighting Java, just make Kotlin match the
+// Java target that's already in effect (11).
 // :app is excluded because evaluationDependsOn(":app") above already forces
 // it to be fully evaluated before other subprojects are configured, so by
 // the time this block runs for :app, calling afterEvaluate on it would
 // throw "Cannot run Project.afterEvaluate(Action) when the project is
-// already evaluated". :app already declares the correct JVM 17 target
-// itself, so it doesn't need this anyway.
+// already evaluated". :app already declares a consistent JVM 17 target for
+// both Java and Kotlin itself, so it doesn't need this anyway.
 subprojects {
     if (project.path != ":app") {
         afterEvaluate {
-            tasks.withType<JavaCompile>().configureEach {
-                sourceCompatibility = JavaVersion.VERSION_17.toString()
-                targetCompatibility = JavaVersion.VERSION_17.toString()
-            }
             tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
             }
         }
     }
