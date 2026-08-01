@@ -22,7 +22,7 @@ class FeedbackBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         border: Border(top: BorderSide(color: color, width: 2)),
       ),
       child: SafeArea(

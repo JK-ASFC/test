@@ -88,7 +88,7 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
                   onPressed: _selected == null ? () => _submit(opt) : null,
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: color ?? Theme.of(context).colorScheme.outlineVariant, width: 2),
-                    backgroundColor: color?.withOpacity(0.1),
+                    backgroundColor: color?.withValues(alpha: 0.1),
                     alignment: Alignment.centerLeft,
                   ),
                   child: Text(opt, style: TextStyle(color: color, fontWeight: FontWeight.w600)),

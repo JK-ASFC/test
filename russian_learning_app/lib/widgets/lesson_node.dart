@@ -40,7 +40,7 @@ class LessonNode extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: locked
                       ? []
-                      : [BoxShadow(color: bgColor.withOpacity(0.5), blurRadius: 0, offset: const Offset(0, 4))],
+                      : [BoxShadow(color: bgColor.withValues(alpha: 0.5), blurRadius: 0, offset: const Offset(0, 4))],
                 ),
                 child: Icon(
                   completed ? Icons.check : (locked ? Icons.lock : Icons.star),

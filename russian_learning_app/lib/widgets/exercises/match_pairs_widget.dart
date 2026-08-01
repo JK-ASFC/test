@@ -97,7 +97,7 @@ class _MatchPairsWidgetState extends State<MatchPairsWidget> {
         decoration: BoxDecoration(
           border: Border.all(color: color ?? Theme.of(context).colorScheme.outlineVariant, width: 2),
           borderRadius: BorderRadius.circular(12),
-          color: matched ? Colors.green.withOpacity(0.1) : null,
+          color: matched ? Colors.green.withValues(alpha: 0.1) : null,
         ),
         child: Text(text, textAlign: TextAlign.center, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
       ),
