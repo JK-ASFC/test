@@ -19,6 +19,25 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// Some plugins (flutter_timezone, flutter_tts, speech_to_text) still apply
+// their own old-style Kotlin Gradle plugin with a Kotlin JVM target that
+// doesn't match the Java target AGP picks for their Android library module,
+// which fails the build with "Inconsistent JVM Target Compatibility".
+// Force every subproject's Java/Kotlin compile tasks onto the same JVM 17
+// target so this can't happen regardless of what an individual plugin
+// declares.
+subprojects {
+    afterEvaluate {
+        tasks.withType<JavaCompile>().configureEach {
+            sourceCompatibility = JavaVersion.VERSION_17.toString()
+            targetCompatibility = JavaVersion.VERSION_17.toString()
+        }
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
