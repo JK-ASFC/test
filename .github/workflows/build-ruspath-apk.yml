@@ -26,6 +26,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # Caches ~/.gradle/caches and the Gradle wrapper distribution so a
+      # retry (or the next content-only push) doesn't have to re-download
+      # Gradle 9.1/AGP 9.0.1/Kotlin 2.3.20 and recompile everything from a
+      # cold cache, which is most of why the first build after the Flutter
+      # SDK upgrade took 15-20+ minutes.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-cleanup: true
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.8'
