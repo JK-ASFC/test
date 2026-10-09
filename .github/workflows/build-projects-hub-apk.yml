@@ -1,0 +1,91 @@
+name: Build Mes Projets APK
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'projects_hub/**'
+      - '.github/workflows/build-projects-hub-apk.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects_hub
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-cleanup: true
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      # Optional: with these repository secrets set, every APK is signed with
+      # the same key, so a new version installs over the old one and keeps
+      # your projects/settings. Without them the APK is signed with the
+      # runner's throwaway debug key (uninstall before installing an update).
+      - name: Set up release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.HUB_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.HUB_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.HUB_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.HUB_KEY_PASSWORD }}
+        if: env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+          {
+            echo "storeFile=app/release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+          } > android/key.properties
+
+      - name: Build release APK
+        run: |
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/mes-projets.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mes-projets-apk
+          path: projects_hub/build/app/outputs/flutter-apk/mes-projets.apk
+          retention-days: 90
+
+      - name: Publish/update "latest" release with the APK
+        if: github.ref_name == 'claude/android-projects-app-i6fxkx' || github.ref_name == 'main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mes-projets-latest
+          name: Mes Projets — dernier APK
+          body: |
+            APK compilé automatiquement depuis le commit ${{ github.sha }}.
+            Télécharge `mes-projets.apk` ci-dessous et installe-le sur ton téléphone Android
+            (active "Sources inconnues" si Android te le demande).
+          files: projects_hub/build/app/outputs/flutter-apk/mes-projets.apk
+          prerelease: true
