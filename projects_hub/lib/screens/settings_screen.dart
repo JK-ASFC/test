@@ -271,7 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.restore),
             title: const Text('Restaurer les projets d\'origine'),
-            subtitle: const Text('Burger Quiz, RusPath, Portfolio'),
+            subtitle: const Text('Burger Quiz, RusPath, Portfolio, Fondu musique'),
             onTap: () async {
               await hub.restoreDefaults();
               _toast('Projets d\'origine restaurés.');

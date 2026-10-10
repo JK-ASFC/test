@@ -151,6 +151,22 @@ void main() {
     }
   });
 
+  test('presets added by an update reach existing installs once', () async {
+    final firstThree = defaultProjects().where((p) => p.id != 'preset-fondu-musique');
+    SharedPreferences.setMockInitialValues({
+      'projects_v1': jsonEncode(firstThree.map((p) => p.toJson()).toList()),
+    });
+    var prefs = await SharedPreferences.getInstance();
+    var hub = HubController(prefs, ProjectFiles(tmp))..restore();
+    expect(hub.byId('preset-fondu-musique'), isNotNull);
+
+    // Deleted by the user: must not come back on the next launch.
+    await hub.remove(hub.byId('preset-fondu-musique')!);
+    hub = HubController(prefs, ProjectFiles(tmp))..restore();
+    expect(hub.byId('preset-fondu-musique'), isNull);
+    expect(hub.projects.length, 3);
+  });
+
   testWidgets('home shows the preset projects', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();

@@ -45,4 +45,18 @@ List<Project> defaultProjects() => [
         branch: 'main',
         entry: 'index.html',
       ),
+      Project(
+        id: 'preset-fondu-musique',
+        name: 'Fondu musique',
+        description: 'Fondu enchaîné entre musiques — version téléphone.',
+        emoji: '🎵',
+        color: 0xFF8E24AA,
+        category: 'Musique',
+        type: SourceType.github,
+        owner: 'JK-ASFC',
+        repo: 'fondu-musique',
+        branch: 'main',
+        entry: 'index.html',
+        orientation: PlayerOrientation.portrait,
+      ),
     ];

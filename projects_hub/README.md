@@ -14,10 +14,15 @@ dans l'appli**.
 | **Site / serveur distant** | N'importe quelle URL : GitHub Pages, un site en ligne, ou ton PC sur le même Wi-Fi (ex. `http://192.168.1.20:8000` avec `python -m http.server`, comme `server.bat` du Burger Quiz). |
 | **Application Android** | Lance une appli installée par son identifiant (ex. RusPath `com.ruspath.russian_learning_app`) et propose de télécharger l'APK si elle n'est pas installée. |
 
-Au premier lancement, trois projets sont déjà configurés :
+Au premier lancement, quatre projets sont déjà configurés :
 **Burger Quiz** (`JK-ASFC/SW`, en paysage et plein écran),
 **RusPath** (appli Android, APK de la release `ruspath-latest`) et
-**Portfolio** (`JK-ASFC/portfolio`).
+**Portfolio** (`JK-ASFC/portfolio`) et **Fondu musique**
+(`JK-ASFC/fondu-musique`, branche `main`, en portrait — crée ce dépôt et
+dépose-y les fichiers du projet avec un `index.html` à la racine pour qu'il
+fonctionne). Les projets par défaut ajoutés dans une nouvelle version
+apparaissent aussi sur une appli déjà installée ; un projet par défaut que
+tu as supprimé ne revient pas.
 
 ### Pourquoi un serveur local ?
 

@@ -29,6 +29,10 @@ class HubController extends ChangeNotifier {
 
   static const _kProjects = 'projects_v1';
   static const _kSettings = 'settings_v1';
+  static const _kSeenPresets = 'seen_presets_v1';
+
+  /// Presets shipped with the first version, before [_kSeenPresets] existed.
+  static const _firstPresets = ['preset-burgerquiz', 'preset-ruspath', 'preset-portfolio'];
 
   List<Project> projects = [];
   AppSettings settings = AppSettings();
@@ -38,11 +42,12 @@ class HubController extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final files = await ProjectFiles.create();
     final c = HubController(prefs, files);
-    c._restore();
+    c.restore();
     return c;
   }
 
-  void _restore() {
+  @visibleForTesting
+  void restore() {
     final s = _prefs.getString(_kSettings);
     if (s != null) {
       try {
@@ -62,7 +67,23 @@ class HubController extends ChangeNotifier {
       } catch (_) {
         projects = defaultProjects();
       }
+      _addNewPresets();
     }
+    _prefs.setStringList(_kSeenPresets, defaultProjects().map((d) => d.id).toList());
+  }
+
+  /// Presets added in an app update show up on existing installs too, but a
+  /// preset the user already saw (and maybe deleted) never comes back.
+  void _addNewPresets() {
+    final seen = _prefs.getStringList(_kSeenPresets) ?? _firstPresets;
+    var added = false;
+    for (final d in defaultProjects()) {
+      if (!seen.contains(d.id) && byId(d.id) == null) {
+        projects.add(d);
+        added = true;
+      }
+    }
+    if (added) _saveProjects();
   }
 
   Future<void> _saveProjects() =>

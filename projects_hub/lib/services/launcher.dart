@@ -119,7 +119,9 @@ Future<bool> _ensureGithubCopy(
     await hub.sync(p);
     return true;
   } catch (e) {
-    toast(hasCopy ? 'Mise à jour impossible ($e). Ouverture de la version enregistrée.' : '$e');
+    toast(hasCopy
+        ? 'Mise à jour impossible ($e). Ouverture de la version enregistrée.'
+        : '${p.owner}/${p.repo} (${p.branch}) : $e');
     return hasCopy;
   }
 }
