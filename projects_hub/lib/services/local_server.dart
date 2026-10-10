@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+
+import 'music_library.dart';
 
 /// Minimal static HTTP server bound to 127.0.0.1.
 ///
@@ -13,10 +16,13 @@ import 'package:path/path.dart' as p;
 /// its localStorage/IndexedDB data is kept between launches and never mixed
 /// with another project's.
 class LocalServer {
-  LocalServer._(this._server, this.root);
+  LocalServer._(this._server, this.root, this.music);
 
   final HttpServer _server;
   final String root;
+
+  /// Phone music, exposed under /__hub/music for built-in apps only.
+  final MusicLibrary? music;
 
   int get port => _server.port;
   String get origin => 'http://127.0.0.1:$port';
@@ -24,9 +30,9 @@ class LocalServer {
   static LocalServer? _current;
 
   /// Starts (or reuses) the server for [root] on [preferredPort].
-  static Future<LocalServer> start(String root, int preferredPort) async {
+  static Future<LocalServer> start(String root, int preferredPort, {MusicLibrary? music}) async {
     final cur = _current;
-    if (cur != null && cur.root == root && cur.port == preferredPort) return cur;
+    if (cur != null && cur.root == root && cur.port == preferredPort && cur.music == music) return cur;
     await stopCurrent();
     HttpServer server;
     try {
@@ -36,7 +42,7 @@ class LocalServer {
       // still works, it just won't see data saved under its usual port).
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     }
-    final s = LocalServer._(server, root);
+    final s = LocalServer._(server, root, music);
     server.listen(s._handle, onError: (_) {});
     _current = s;
     return s;
@@ -65,30 +71,17 @@ class LocalServer {
         res.statusCode = HttpStatus.methodNotAllowed;
         return;
       }
-      final file = resolve(root, req.uri.path);
-      if (file == null) {
-        res.statusCode = HttpStatus.notFound;
-        res.headers.contentType = ContentType.html;
-        res.write('<h1>404</h1><p>${_escape(req.uri.path)} introuvable</p>');
+      if (req.uri.path.startsWith('/__hub/')) {
+        await _handleHub(req);
         return;
       }
-      final length = await file.length();
-      res.headers
-        ..set(HttpHeaders.contentTypeHeader, contentTypeFor(file.path))
-        ..set(HttpHeaders.acceptRangesHeader, 'bytes')
-        ..set(HttpHeaders.cacheControlHeader, 'no-cache')
-        ..set('Access-Control-Allow-Origin', '*');
-
-      final range = parseRange(req.headers.value(HttpHeaders.rangeHeader), length);
-      if (range != null) {
-        res.statusCode = HttpStatus.partialContent;
-        res.headers.set(HttpHeaders.contentRangeHeader, 'bytes ${range.$1}-${range.$2}/$length');
-        res.contentLength = range.$2 - range.$1 + 1;
-        if (req.method == 'GET') await res.addStream(file.openRead(range.$1, range.$2 + 1));
-      } else {
-        res.contentLength = length;
-        if (req.method == 'GET') await res.addStream(file.openRead());
+      final file = resolve(root, req.uri.path);
+      if (file == null) {
+        _notFound(res, req.uri.path);
+        return;
       }
+      res.headers.set('Access-Control-Allow-Origin', '*');
+      await _sendFile(req, file);
     } catch (_) {
       try {
         res.statusCode = HttpStatus.internalServerError;
@@ -97,6 +90,61 @@ class LocalServer {
       try {
         await res.close();
       } catch (_) {}
+    }
+  }
+
+  /// GET /__hub/music[?refresh=1] -> JSON list of the phone's audio files.
+  /// GET /__hub/music/file?p=/absolute/path.mp3 -> the file (Range supported).
+  Future<void> _handleHub(HttpRequest req) async {
+    final res = req.response;
+    final lib = music;
+    if (lib == null) {
+      _notFound(res, req.uri.path);
+      return;
+    }
+    if (req.uri.path == '/__hub/music') {
+      final data = await lib.list(refresh: req.uri.queryParameters['refresh'] == '1');
+      res.headers
+        ..contentType = ContentType.json
+        ..set(HttpHeaders.cacheControlHeader, 'no-store');
+      res.write(jsonEncode(data));
+      return;
+    }
+    if (req.uri.path == '/__hub/music/file') {
+      final path = req.uri.queryParameters['p'] ?? '';
+      if (!lib.allows(path) || !File(path).existsSync()) {
+        _notFound(res, path);
+        return;
+      }
+      await _sendFile(req, File(path));
+      return;
+    }
+    _notFound(res, req.uri.path);
+  }
+
+  void _notFound(HttpResponse res, String what) {
+    res.statusCode = HttpStatus.notFound;
+    res.headers.contentType = ContentType.html;
+    res.write('<h1>404</h1><p>${_escape(what)} introuvable</p>');
+  }
+
+  Future<void> _sendFile(HttpRequest req, File file) async {
+    final res = req.response;
+    final length = await file.length();
+    res.headers
+      ..set(HttpHeaders.contentTypeHeader, contentTypeFor(file.path))
+      ..set(HttpHeaders.acceptRangesHeader, 'bytes')
+      ..set(HttpHeaders.cacheControlHeader, 'no-cache');
+
+    final range = parseRange(req.headers.value(HttpHeaders.rangeHeader), length);
+    if (range != null) {
+      res.statusCode = HttpStatus.partialContent;
+      res.headers.set(HttpHeaders.contentRangeHeader, 'bytes ${range.$1}-${range.$2}/$length');
+      res.contentLength = range.$2 - range.$1 + 1;
+      if (req.method == 'GET') await res.addStream(file.openRead(range.$1, range.$2 + 1));
+    } else {
+      res.contentLength = length;
+      if (req.method == 'GET') await res.addStream(file.openRead());
     }
   }
 
@@ -180,6 +228,10 @@ class LocalServer {
     'm4a': 'audio/mp4',
     'aac': 'audio/aac',
     'flac': 'audio/flac',
+    'opus': 'audio/ogg',
+    '3gp': 'audio/3gpp',
+    'amr': 'audio/amr',
+    'mka': 'audio/x-matroska',
     'mp4': 'video/mp4',
     'm4v': 'video/mp4',
     'webm': 'video/webm',

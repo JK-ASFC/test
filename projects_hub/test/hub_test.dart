@@ -8,6 +8,7 @@ import 'package:projects_hub/models/project.dart';
 import 'package:projects_hub/screens/home_screen.dart';
 import 'package:projects_hub/services/github_service.dart';
 import 'package:projects_hub/services/local_server.dart';
+import 'package:projects_hub/services/music_library.dart';
 import 'package:projects_hub/services/project_files.dart';
 import 'package:projects_hub/state/hub_controller.dart';
 import 'package:projects_hub/state/presets.dart';
@@ -165,6 +166,94 @@ void main() {
     hub = HubController(prefs, ProjectFiles(tmp))..restore();
     expect(hub.byId('preset-fondu-musique'), isNull);
     expect(hub.projects.length, 3);
+  });
+
+  group('Fondu musique', () {
+    void song(String rel, {int size = 50000}) {
+      final f = File('${tmp.path}/$rel')..createSync(recursive: true);
+      f.writeAsBytesSync(List.filled(size, 1));
+    }
+
+    test('MusicLibrary finds songs, skips tiny/system/hidden files', () async {
+      song('Music/Rock/a.mp3');
+      song('Music/b.FLAC');
+      song('Download/c.m4a');
+      song('Music/blip.mp3', size: 100);
+      song('Notifications/ding.ogg');
+      song('Android/data/x/d.mp3');
+      song('.hidden/e.mp3');
+      song('Music/cover.jpg');
+      final lib = MusicLibrary(roots: [tmp.path]);
+      final data = await lib.list();
+      final names = (data['tracks'] as List).map((t) => (t as Map)['name']).toList();
+      expect(names, ['c', 'b', 'a']); // Download < Music < Music/Rock
+      expect(lib.allows('${tmp.path}/Music/b.FLAC'), isTrue);
+      expect(lib.allows('${tmp.path}/Music/cover.jpg'), isFalse);
+      expect(lib.allows('/etc/passwd'), isFalse);
+      expect(lib.allows('${tmp.path}/../x.mp3'), isFalse);
+
+      final denied = MusicLibrary(roots: [tmp.path], hasPermission: () async => false);
+      expect((await denied.list())['needPermission'], isTrue);
+    });
+
+    test('music API is only served when a library is attached', () async {
+      song('Music/a.mp3');
+      final saved = HttpOverrides.current;
+      HttpOverrides.global = null;
+      addTearDown(() => HttpOverrides.global = saved);
+      final client = HttpClient();
+      Future<int> status(String path) async {
+        final r = await (await client.getUrl(Uri.parse(path))).close();
+        await r.drain<void>();
+        return r.statusCode;
+      }
+
+      try {
+        var server = await LocalServer.start(tmp.path, 0);
+        expect(await status('${server.origin}/__hub/music'), 404);
+        await LocalServer.stopCurrent();
+
+        server = await LocalServer.start(tmp.path, 0, music: MusicLibrary(roots: [tmp.path]));
+        final r = await (await client.getUrl(Uri.parse('${server.origin}/__hub/music'))).close();
+        final json = jsonDecode(await r.transform(utf8.decoder).join()) as Map;
+        expect((json['tracks'] as List).single['name'], 'a');
+        final file = Uri.encodeComponent('${tmp.path}/Music/a.mp3');
+        expect(await status('${server.origin}/__hub/music/file?p=$file'), 200);
+        expect(await status('${server.origin}/__hub/music/file?p=%2Fetc%2Fpasswd'), 404);
+      } finally {
+        client.close(force: true);
+        await LocalServer.stopCurrent();
+      }
+    });
+
+    test('built-in app is installed from the bundled assets', () async {
+      final files = ProjectFiles(Directory('${tmp.path}/projects')..createSync());
+      final p = fonduMusique();
+      await files.installBuiltin(p);
+      final root = files.serveRoot(p)!;
+      for (final f in ['index.html', 'app.js', 'style.css']) {
+        expect(File('$root/$f').existsSync(), isTrue, reason: f);
+      }
+    });
+
+    test('v2 GitHub preset is migrated to the built-in app', () async {
+      final old = Project.fromJson(fonduMusique().toJson())
+        ..type = SourceType.github
+        ..builtin = null
+        ..owner = 'JK-ASFC'
+        ..repo = 'fondu-musique'
+        ..description = 'Fondu enchaîné entre musiques — version téléphone.';
+      SharedPreferences.setMockInitialValues({
+        'projects_v1': jsonEncode([old.toJson()]),
+        'seen_presets_v1': defaultProjects().map((d) => d.id).toList(),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final hub = HubController(prefs, ProjectFiles(tmp))..restore();
+      final f = hub.byId('preset-fondu-musique')!;
+      expect(f.type, SourceType.builtin);
+      expect(f.builtin, 'fondu_musique');
+      expect(f.description, fonduMusique().description);
+    });
   });
 
   testWidgets('home shows the preset projects', (tester) async {

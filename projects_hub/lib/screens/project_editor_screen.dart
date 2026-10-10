@@ -372,6 +372,15 @@ class _ProjectEditorScreenState extends State<ProjectEditorScreen> {
                 helper: 'Proposé au téléchargement si l\'appli n\'est pas installée.'),
           ),
         ];
+      case SourceType.builtin:
+        return [
+          const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.auto_awesome_outlined),
+            title: Text('Appli intégrée à Mes Projets'),
+            subtitle: Text('Fonctionne hors-ligne et se met à jour avec Mes Projets.'),
+          ),
+        ];
     }
   }
 }

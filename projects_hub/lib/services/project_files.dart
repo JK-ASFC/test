@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -37,6 +38,9 @@ class ProjectFiles {
         final c = contentDir(project.id);
         if (!c.existsSync()) return null;
         return project.subdir.isEmpty ? c.path : p.join(c.path, project.subdir);
+      case SourceType.builtin:
+        final c = contentDir(project.id);
+        return c.existsSync() ? c.path : null;
       case SourceType.localFolder:
         final lp = project.localPath;
         return lp != null && Directory(lp).existsSync() ? lp : null;
@@ -91,6 +95,25 @@ class ProjectFiles {
     if (content.existsSync()) await content.delete(recursive: true);
     await root.rename(content.path);
     if (tmp.existsSync()) await tmp.delete(recursive: true);
+  }
+
+  /// Copies the built-in web app `assets/builtin/<name>/` into the project's
+  /// content folder. Done at every opening (a few small files) so an app
+  /// update always brings the latest version of the built-in app.
+  Future<void> installBuiltin(Project project, {AssetBundle? bundle}) async {
+    final b = bundle ?? rootBundle;
+    final prefix = 'assets/builtin/${project.builtin}/';
+    final manifest = await AssetManifest.loadFromAssetBundle(b);
+    final assets = manifest.listAssets().where((a) => a.startsWith(prefix)).toList();
+    if (assets.isEmpty) throw StateError('Appli intégrée « ${project.builtin} » introuvable.');
+    final content = contentDir(project.id);
+    if (content.existsSync()) await content.delete(recursive: true);
+    for (final a in assets) {
+      final data = await b.load(a);
+      final out = File(p.join(content.path, a.substring(prefix.length)));
+      await out.parent.create(recursive: true);
+      await out.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+    }
   }
 
   /// Lists .html files of a served folder (relative paths), to pick an entry page.

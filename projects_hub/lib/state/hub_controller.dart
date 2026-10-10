@@ -83,6 +83,21 @@ class HubController extends ChangeNotifier {
         added = true;
       }
     }
+    // v2 pointed Fondu musique at a GitHub repo; it is now built in.
+    final fondu = byId('preset-fondu-musique');
+    if (fondu != null && fondu.type == SourceType.github && fondu.repo == 'fondu-musique') {
+      final b = fonduMusique();
+      fondu
+        ..type = b.type
+        ..builtin = b.builtin
+        ..owner = ''
+        ..repo = ''
+        ..entry = b.entry
+        ..installedSha = null
+        ..remoteSha = null;
+      if (fondu.description.startsWith('Fondu enchaîné entre musiques')) fondu.description = b.description;
+      added = true;
+    }
     if (added) _saveProjects();
   }
 

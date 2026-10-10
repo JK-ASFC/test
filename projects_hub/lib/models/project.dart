@@ -14,6 +14,9 @@ enum SourceType {
 
   /// An installed Android application (e.g. RusPath), launched by package name.
   androidApp,
+
+  /// A web app shipped inside Mes Projets itself (e.g. Fondu musique).
+  builtin,
 }
 
 extension SourceTypeLabel on SourceType {
@@ -23,6 +26,7 @@ extension SourceTypeLabel on SourceType {
         SourceType.zipImport => 'ZIP importé',
         SourceType.url => 'Site distant',
         SourceType.androidApp => 'Appli Android',
+        SourceType.builtin => 'Appli intégrée',
       };
 }
 
@@ -57,6 +61,7 @@ class Project {
     this.entry = 'index.html',
     this.packageName,
     this.apkUrl,
+    this.builtin,
     this.orientation = PlayerOrientation.auto,
     this.fullscreen = false,
     this.installedSha,
@@ -97,6 +102,9 @@ class Project {
   String? packageName;
   String? apkUrl;
 
+  /// Which built-in app, for [SourceType.builtin] (folder under assets/builtin/).
+  String? builtin;
+
   // Player options
   PlayerOrientation orientation;
   bool fullscreen;
@@ -125,6 +133,7 @@ class Project {
         SourceType.zipImport => 'Copie locale',
         SourceType.url => url ?? '',
         SourceType.androidApp => packageName ?? '',
+        SourceType.builtin => 'Intégrée à Mes Projets',
       };
 
   Project copy({String? id}) => Project.fromJson({...toJson(), 'id': id ?? this.id});
@@ -148,6 +157,7 @@ class Project {
         'entry': entry,
         'packageName': packageName,
         'apkUrl': apkUrl,
+        'builtin': builtin,
         'orientation': orientation.name,
         'fullscreen': fullscreen,
         'installedSha': installedSha,
@@ -176,6 +186,7 @@ class Project {
         entry: j['entry'] as String? ?? 'index.html',
         packageName: j['packageName'] as String?,
         apkUrl: j['apkUrl'] as String?,
+        builtin: j['builtin'] as String?,
         orientation: PlayerOrientation.values.asNameMap()[j['orientation']] ??
             PlayerOrientation.auto,
         fullscreen: j['fullscreen'] as bool? ?? false,

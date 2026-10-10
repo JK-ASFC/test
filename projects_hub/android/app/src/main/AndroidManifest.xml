@@ -8,6 +8,7 @@
     <application
         android:label="Mes Projets"
         android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

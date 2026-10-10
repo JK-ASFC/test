@@ -7,7 +7,11 @@ import '../models/project.dart';
 import '../screens/player_screen.dart';
 import '../state/hub_controller.dart';
 import 'local_server.dart';
+import 'music_library.dart';
 import 'native_bridge.dart';
+
+/// Kept for the whole session so the music scan is only redone on demand.
+MusicLibrary? _music;
 
 /// Opens a project whatever its source: launches the Android app, or makes
 /// sure the files are on the phone, serves them and shows them full screen.
@@ -57,6 +61,13 @@ Future<void> openProject(BuildContext context, HubController hub, Project projec
       final ready = await _ensureGithubCopy(hub, project, toast);
       if (!ready) return;
     }
+    if (project.type == SourceType.builtin) {
+      try {
+        await hub.files.installBuiltin(project);
+      } catch (e) {
+        return toast('$e');
+      }
+    }
     if (project.type == SourceType.localFolder && Platform.isAndroid) {
       if (!await NativeBridge.hasAllFilesAccess()) {
         if (!context.mounted) return;
@@ -85,7 +96,14 @@ Future<void> openProject(BuildContext context, HubController hub, Project projec
         _ => 'Fichiers du projet introuvables.',
       });
     }
-    final server = await LocalServer.start(root, LocalServer.portFor(project.id));
+    // Only built-in apps get to see the phone's music library.
+    final music = project.type == SourceType.builtin
+        ? (_music ??= MusicLibrary(
+            roots: Platform.isAndroid ? MusicLibrary.androidRoots() : [Platform.environment['HOME'] ?? '/'],
+            hasPermission: Platform.isAndroid ? NativeBridge.hasAllFilesAccess : null,
+          ))
+        : null;
+    final server = await LocalServer.start(root, LocalServer.portFor(project.id), music: music);
     final entry = project.entry.trim().replaceFirst(RegExp(r'^/+'), '');
     url = '${server.origin}/${entry.split('/').map(Uri.encodeComponent).join('/')}';
   }

@@ -17,10 +17,8 @@ dans l'appli**.
 Au premier lancement, quatre projets sont déjà configurés :
 **Burger Quiz** (`JK-ASFC/SW`, en paysage et plein écran),
 **RusPath** (appli Android, APK de la release `ruspath-latest`) et
-**Portfolio** (`JK-ASFC/portfolio`) et **Fondu musique**
-(`JK-ASFC/fondu-musique`, branche `main`, en portrait — crée ce dépôt et
-dépose-y les fichiers du projet avec un `index.html` à la racine pour qu'il
-fonctionne). Les projets par défaut ajoutés dans une nouvelle version
+**Portfolio** (`JK-ASFC/portfolio`) et **Fondu musique** (appli intégrée,
+voir plus bas). Les projets par défaut ajoutés dans une nouvelle version
 apparaissent aussi sur une appli déjà installée ; un projet par défaut que
 tu as supprimé ne revient pas.
 
@@ -32,6 +30,32 @@ JS, `localStorage`, IndexedDB (utilisé par le Burger Quiz pour les slides et
 médias), vidéos avec avance rapide (requêtes Range)… Chaque projet a son
 propre port fixe, donc ses données sauvegardées sont conservées d'une
 ouverture à l'autre et ne se mélangent pas avec celles des autres projets.
+
+## Fondu musique (appli intégrée)
+
+Lecteur de musique pensé pour le téléphone, livré dans Mes Projets
+(`assets/builtin/fondu_musique/`) : il fonctionne hors-ligne et se met à
+jour avec l'APK.
+
+- **Musiques locales** : la bibliothèque liste toutes les musiques du
+  téléphone et des cartes SD (MP3, M4A/AAC, OGG/Opus, FLAC, WAV…), rangées
+  par dossier, avec recherche. Il faut autoriser « Accès à tous les
+  fichiers » une fois (bouton dans l'appli). Sans autorisation, « Importer
+  des fichiers » permet de choisir des morceaux à la main.
+- **Fondu enchaîné** entre deux platines A/B (indicateur de volume de
+  chacune) : automatique en fin de morceau, ou à la demande avec le bouton
+  « Fondu vers le suivant ». Durée 0–20 s, forme égale puissance (volume
+  constant), douce ou linéaire, avec aperçu de la courbe.
+- File d'attente : ajout d'un morceau ou d'un dossier entier, lecture
+  immédiate, réordonner, retirer, mélanger, répéter tout / un / rien.
+- Fondu sur pause/reprise, passage rapide ou fondu complet sur ⏮/⏭, volume
+  général, contrôles sur l'écran de verrouillage (Media Session).
+- File, morceau en cours et réglages sont conservés entre deux ouvertures.
+
+Les fondus sont calculés par Web Audio (horloge audio, pas des minuteurs),
+donc restent fluides écran éteint. Seules les applis intégrées ont accès à
+l'API musique du serveur local (`/__hub/music`), jamais les projets
+téléchargés.
 
 ## Ajouter un projet GitHub
 

@@ -58,6 +58,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
       ..setOnJavaScriptConfirmDialog((r) => _confirm(r.message))
       ..setOnJavaScriptTextInputDialog((r) => _prompt(r.message, r.defaultText));
 
+    if (widget.project.type == SourceType.builtin) {
+      // Lets built-in apps ask for things a web page can't do by itself.
+      _web.addJavaScriptChannel('HubBridge', onMessageReceived: (m) {
+        if (m.message == 'requestMusicPermission') NativeBridge.requestAllFilesAccess();
+      });
+    }
+
     final platform = _web.platform;
     if (platform is AndroidWebViewController) {
       platform

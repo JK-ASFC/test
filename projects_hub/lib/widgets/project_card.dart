@@ -12,6 +12,7 @@ IconData sourceIcon(SourceType t) => switch (t) {
       SourceType.zipImport => Icons.archive_outlined,
       SourceType.url => Icons.public,
       SourceType.androidApp => Icons.android,
+      SourceType.builtin => Icons.auto_awesome_outlined,
     };
 
 /// Big square-ish tile used in grid mode.

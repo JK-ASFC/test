@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#160b24">
+  <title>Fondu musique</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section class="now card" aria-label="Lecture en cours">
+      <div class="now-head">
+        <div class="art" id="art" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+        </div>
+        <div class="meta">
+          <div class="title" id="title">Aucun morceau</div>
+          <div class="sub" id="sub">Ajoute des musiques depuis la bibliothèque</div>
+        </div>
+      </div>
+
+      <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
+      <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
+
+      <div class="controls">
+        <button class="icon" id="prev" aria-label="Précédent">
+          <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        </button>
+        <button class="icon big" id="play" aria-label="Lecture"></button>
+        <button class="icon" id="next" aria-label="Suivant">
+          <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+
+      <button class="fade-btn" id="fadeNow">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c5 0 6-10 9-10s4 10 9 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        Fondu vers le suivant · <span id="fadeLabel">6 s</span>
+      </button>
+
+      <div class="mix" aria-label="Volumes des deux platines">
+        <span class="deck-label">A</span>
+        <div class="meter"><i id="mixA"></i></div>
+        <div class="meter right"><i id="mixB"></i></div>
+        <span class="deck-label">B</span>
+      </div>
+      <div class="upnext" id="upNext">Ensuite : —</div>
+    </section>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="queue" class="active">File d'attente <span class="count" id="qCount">0</span></button>
+      <button role="tab" data-tab="library">Bibliothèque</button>
+      <button role="tab" data-tab="settings">Réglages</button>
+    </nav>
+
+    <section class="tab" id="tab-queue">
+      <div class="toolbar">
+        <button class="chip" id="shuffle">🔀 Mélanger</button>
+        <button class="chip" id="repeat">🔁 Tout répéter</button>
+        <button class="chip danger" id="clear">Vider</button>
+      </div>
+      <ol class="list" id="queue"></ol>
+      <div class="empty" id="queueEmpty">
+        <p>La file d'attente est vide.</p>
+        <button class="primary" data-goto="library">Choisir des musiques</button>
+      </div>
+    </section>
+
+    <section class="tab hidden" id="tab-library">
+      <div class="perm card hidden" id="perm">
+        <p><strong>Accès à tes musiques</strong><br>Autorise « Accès à tous les fichiers » pour Mes Projets afin de lister les musiques du téléphone, puis reviens ici.</p>
+        <button class="primary" id="grant">Autoriser l'accès</button>
+      </div>
+      <div class="search-row">
+        <input type="search" id="search" placeholder="Rechercher un titre, un dossier…" autocomplete="off">
+        <button class="icon small" id="refresh" aria-label="Actualiser">
+          <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
+      </div>
+      <div class="toolbar">
+        <label class="chip">📂 Importer des fichiers
+          <input type="file" id="import" accept="audio/*" multiple hidden>
+        </label>
+        <span class="lib-info" id="libInfo"></span>
+      </div>
+      <div id="library"></div>
+    </section>
+
+    <section class="tab hidden" id="tab-settings">
+      <div class="card setting">
+        <div class="setting-head"><span>Durée du fondu</span><strong id="fadeVal">6 s</strong></div>
+        <input type="range" id="fade" min="0" max="20" step="0.5" value="6">
+      </div>
+      <div class="card setting">
+        <div class="setting-head"><span>Forme du fondu</span></div>
+        <div class="segmented" id="curve">
+          <button data-v="equal">Égale puissance</button>
+          <button data-v="smooth">Douce</button>
+          <button data-v="linear">Linéaire</button>
+        </div>
+        <svg class="curve-preview" id="curvePreview" viewBox="0 0 100 40" preserveAspectRatio="none"></svg>
+      </div>
+      <label class="card setting toggle">
+        <span>Fondu automatique en fin de morceau<small>Le suivant démarre pendant que l'actuel s'éteint</small></span>
+        <input type="checkbox" id="auto">
+      </label>
+      <label class="card setting toggle">
+        <span>Fondu sur pause / reprise<small>Évite les coupures brutales</small></span>
+        <input type="checkbox" id="fadePause">
+      </label>
+      <label class="card setting toggle">
+        <span>Fondu aussi sur ⏮ / ⏭<small>Sinon passage rapide (1 s)</small></span>
+        <input type="checkbox" id="fadeSkip">
+      </label>
+      <div class="card setting">
+        <div class="setting-head"><span>Volume général</span><strong id="volVal">100 %</strong></div>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+      </div>
+      <p class="about">Fondu musique · lit les musiques de ton téléphone (MP3, M4A, OGG, FLAC, WAV…) et enchaîne les morceaux en fondu. Tout reste sur l'appareil.</p>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
