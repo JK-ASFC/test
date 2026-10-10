@@ -31,26 +31,42 @@ médias), vidéos avec avance rapide (requêtes Range)… Chaque projet a son
 propre port fixe, donc ses données sauvegardées sont conservées d'une
 ouverture à l'autre et ne se mélangent pas avec celles des autres projets.
 
-## Fondu musique (appli intégrée)
+## Fondu musique — Boom Player version téléphone (appli intégrée)
 
-Lecteur de musique pensé pour le téléphone, livré dans Mes Projets
-(`assets/builtin/fondu_musique/`) : il fonctionne hors-ligne et se met à
-jour avec l'APK.
+Portage pour téléphone du **Boom Player** (le lecteur à fondu enchaîné pour
+les boums de colo), livré dans Mes Projets (`assets/builtin/fondu_musique/`) :
+il fonctionne hors-ligne et se met à jour avec l'APK.
 
-- **Musiques locales** : la bibliothèque liste toutes les musiques du
-  téléphone et des cartes SD (MP3, M4A/AAC, OGG/Opus, FLAC, WAV…), rangées
-  par dossier, avec recherche. Il faut autoriser « Accès à tous les
-  fichiers » une fois (bouton dans l'appli). Sans autorisation, « Importer
-  des fichiers » permet de choisir des morceaux à la main.
-- **Fondu enchaîné** entre deux platines A/B (indicateur de volume de
-  chacune) : automatique en fin de morceau, ou à la demande avec le bouton
-  « Fondu vers le suivant ». Durée 0–20 s, forme égale puissance (volume
-  constant), douce ou linéaire, avec aperçu de la courbe.
-- File d'attente : ajout d'un morceau ou d'un dossier entier, lecture
-  immédiate, réordonner, retirer, mélanger, répéter tout / un / rien.
-- Fondu sur pause/reprise, passage rapide ou fondu complet sur ⏮/⏭, volume
-  général, contrôles sur l'écran de verrouillage (Media Session).
-- File, morceau en cours et réglages sont conservés entre deux ouvertures.
+- **Musiques du téléphone** : la bibliothèque liste les musiques du stockage
+  interne et des cartes SD (MP3, M4A/AAC, OGG/Opus, FLAC, WAV…), rangées par
+  dossier, avec recherche (titre, artiste, dossier, balise) et filtre par
+  balise. Autorise « Accès à tous les fichiers » une fois (bouton dans
+  l'appli) ; sinon « Importer » permet de choisir des fichiers à la main.
+- **Fondu enchaîné** entre deux platines A/B : automatique en fin de
+  morceau, au skip (⏮/⏭ ou choix d'un morceau), ou à la demande avec
+  « Fondu vers le suivant ». Durée 0–20 s, forme égale puissance / douce /
+  linéaire, fondu sur pause et reprise.
+- **Playlists** : création, renommage (appui long), réordonnancement ▲▼,
+  lecture normale ou aléatoire, suppression des doublons, morceaux absents
+  du téléphone grisés (ils se rattachent dès que le fichier du même nom est
+  présent).
+- **Repères de couleur** entre les chansons (« Ça bouge », « Calme »…) :
+  autant que tu veux, 6 couleurs, déplaçables ▲▼, affichés aussi dans la
+  file d'attente.
+- **Balises** (« Bouge », « Danse romantique », « Rap »…) sur un morceau ou
+  une sélection, avec filtres.
+- **File d'attente** visible et modifiable (▲▼ ✕), aléatoire, répéter
+  tout / un / rien, doublons.
+- **Renommer** un morceau par appui long (titre et artiste).
+- **Import / export `.json` compatible avec Boom Player sur PC** (bouton ⤓
+  là-bas) : morceaux retrouvés par nom de fichier, titres renommés, balises
+  et repères conservés. L'export du téléphone est enregistré dans
+  `Téléchargements/Boom Player/`.
+- **« Ajouter une musique »** ouvre YouTube et notube.lol dans le
+  navigateur ; le MP3 téléchargé apparaît dans la bibliothèque (dossier
+  Download) après ↻.
+- Fond ambiant aux couleurs du morceau, mini-lecteur, contrôles sur l'écran
+  de verrouillage. Tout reste sur le téléphone.
 
 Les fondus sont calculés par Web Audio (horloge audio, pas des minuteurs),
 donc restent fluides écran éteint. Seules les applis intégrées ont accès à

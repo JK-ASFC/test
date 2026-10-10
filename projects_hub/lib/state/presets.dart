@@ -53,7 +53,7 @@ List<Project> defaultProjects() => [
 Project fonduMusique() => Project(
       id: 'preset-fondu-musique',
       name: 'Fondu musique',
-      description: 'Tes musiques du téléphone, enchaînées en fondu.',
+      description: 'Boom Player version téléphone : tes musiques, playlists et repères, en fondu enchaîné.',
       emoji: '🎵',
       color: 0xFF8E24AA,
       category: 'Musique',

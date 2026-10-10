@@ -88,6 +88,7 @@ class MusicLibrary {
           out.add({
             'path': e.path,
             'name': p.basenameWithoutExtension(e.path),
+            'file': p.basename(e.path),
             'folder': rel == '.' ? p.basename(root) : rel,
             'size': stat.size,
             'modified': stat.modified.millisecondsSinceEpoch,

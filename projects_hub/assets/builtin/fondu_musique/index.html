@@ -3,123 +3,174 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#160b24">
-  <title>Fondu musique</title>
+  <meta name="theme-color" content="#08060d">
+  <title>Boom Player</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="app">
-    <section class="now card" aria-label="Lecture en cours">
-      <div class="now-head">
-        <div class="art" id="art" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+  <div id="ambient" aria-hidden="true"></div>
+
+  <header class="top">
+    <div class="brand"><span class="logo">BOOM</span><span class="brand-sub">player</span></div>
+    <button class="pill accent" id="addMusicBtn">＋ Ajouter une musique</button>
+  </header>
+
+  <main id="views">
+    <!-- ================= Lecture ================= -->
+    <section class="view" id="view-now">
+      <div class="np card glass">
+        <div class="np-art" id="npArt"><span id="npInitials">♪</span></div>
+        <div class="np-title" id="npTitle">Aucun morceau</div>
+        <div class="np-artist" id="npArtist">Choisis des musiques dans la bibliothèque</div>
+        <div class="np-tags" id="npTags"></div>
+        <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
+        <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
+        <div class="transport">
+          <button class="ic" id="shuffleBtn" aria-label="Aléatoire"><svg viewBox="0 0 24 24"><path d="M10.6 9.2 5.4 4 4 5.4l5.2 5.2 1.4-1.4zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4h-5.5zm.3 9.4-1.4 1.4 3.1 3.1-2 2.1H20v-5.5l-2 2-3.2-3.1z"/></svg></button>
+          <button class="ic" id="prevBtn" aria-label="Précédent"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+          <button class="ic play" id="playBtn" aria-label="Lecture"></button>
+          <button class="ic" id="nextBtn" aria-label="Suivant"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+          <button class="ic" id="loopBtn" aria-label="Répéter"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg><b id="loopOne">1</b></button>
         </div>
-        <div class="meta">
-          <div class="title" id="title">Aucun morceau</div>
-          <div class="sub" id="sub">Ajoute des musiques depuis la bibliothèque</div>
+        <button class="fade-btn" id="fadeNowBtn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c5 0 6-10 9-10s4 10 9 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          Fondu vers le suivant · <span id="fadeLabel">6 s</span>
+        </button>
+        <div class="mix" aria-label="Volumes des platines">
+          <span>A</span><div class="meter"><i id="mixA"></i></div><div class="meter r"><i id="mixB"></i></div><span>B</span>
         </div>
       </div>
 
-      <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
-      <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
-
-      <div class="controls">
-        <button class="icon" id="prev" aria-label="Précédent">
-          <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-        </button>
-        <button class="icon big" id="play" aria-label="Lecture"></button>
-        <button class="icon" id="next" aria-label="Suivant">
-          <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-        </button>
+      <div class="section-head">
+        <h2>À suivre <small id="queueInfo"></small></h2>
+        <button class="pill" id="queueDedupBtn">Doublons</button>
+        <button class="pill danger" id="queueClearBtn">Vider</button>
       </div>
-
-      <button class="fade-btn" id="fadeNow">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c5 0 6-10 9-10s4 10 9 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        Fondu vers le suivant · <span id="fadeLabel">6 s</span>
-      </button>
-
-      <div class="mix" aria-label="Volumes des deux platines">
-        <span class="deck-label">A</span>
-        <div class="meter"><i id="mixA"></i></div>
-        <div class="meter right"><i id="mixB"></i></div>
-        <span class="deck-label">B</span>
-      </div>
-      <div class="upnext" id="upNext">Ensuite : —</div>
-    </section>
-
-    <nav class="tabs" role="tablist">
-      <button role="tab" data-tab="queue" class="active">File d'attente <span class="count" id="qCount">0</span></button>
-      <button role="tab" data-tab="library">Bibliothèque</button>
-      <button role="tab" data-tab="settings">Réglages</button>
-    </nav>
-
-    <section class="tab" id="tab-queue">
-      <div class="toolbar">
-        <button class="chip" id="shuffle">🔀 Mélanger</button>
-        <button class="chip" id="repeat">🔁 Tout répéter</button>
-        <button class="chip danger" id="clear">Vider</button>
-      </div>
-      <ol class="list" id="queue"></ol>
+      <ol class="rows" id="queueList"></ol>
       <div class="empty" id="queueEmpty">
         <p>La file d'attente est vide.</p>
-        <button class="primary" data-goto="library">Choisir des musiques</button>
+        <button class="pill accent" data-goto="library">Ouvrir la bibliothèque</button>
       </div>
     </section>
 
-    <section class="tab hidden" id="tab-library">
-      <div class="perm card hidden" id="perm">
+    <!-- ================= Bibliothèque ================= -->
+    <section class="view hidden" id="view-library">
+      <div class="perm card hidden" id="permBox">
         <p><strong>Accès à tes musiques</strong><br>Autorise « Accès à tous les fichiers » pour Mes Projets afin de lister les musiques du téléphone, puis reviens ici.</p>
-        <button class="primary" id="grant">Autoriser l'accès</button>
+        <button class="pill accent" id="grantBtn">Autoriser l'accès</button>
       </div>
       <div class="search-row">
-        <input type="search" id="search" placeholder="Rechercher un titre, un dossier…" autocomplete="off">
-        <button class="icon small" id="refresh" aria-label="Actualiser">
-          <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-        </button>
+        <input type="search" id="search" placeholder="Titre, artiste, dossier, balise…" autocomplete="off">
+        <button class="ic sm" id="refreshBtn" aria-label="Actualiser"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></button>
       </div>
+      <div class="chips" id="tagFilter"></div>
       <div class="toolbar">
-        <label class="chip">📂 Importer des fichiers
-          <input type="file" id="import" accept="audio/*" multiple hidden>
-        </label>
-        <span class="lib-info" id="libInfo"></span>
+        <button class="pill" id="playAllBtn">▶ Tout lire</button>
+        <button class="pill" id="selectBtn">☑ Sélection</button>
+        <label class="pill">📂 Importer<input type="file" id="importFiles" accept="audio/*" multiple hidden></label>
+        <span class="muted" id="libInfo"></span>
       </div>
-      <div id="library"></div>
+      <div id="libList"></div>
     </section>
 
-    <section class="tab hidden" id="tab-settings">
+    <!-- ================= Playlists ================= -->
+    <section class="view hidden" id="view-playlists">
+      <div id="plIndex">
+        <div class="toolbar">
+          <button class="pill accent" id="newPlBtn">＋ Nouvelle playlist</button>
+          <label class="pill">📥 Importer (.json)<input type="file" id="importPlInput" accept="application/json,.json" hidden></label>
+        </div>
+        <ul class="rows" id="plList"></ul>
+        <div class="empty hidden" id="plEmpty"><p>Pas encore de playlist.<br>Crée-en une, ou importe celle exportée depuis Boom Player sur ton PC (⤓).</p></div>
+      </div>
+      <div id="plDetail" class="hidden">
+        <div class="pl-head">
+          <button class="ic sm" id="plBackBtn" aria-label="Retour"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+          <div class="pl-title-wrap">
+            <h2 id="plTitle"></h2>
+            <small id="plInfo" class="muted"></small>
+          </div>
+          <button class="ic sm" id="plMenuBtn" aria-label="Options"><svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg></button>
+        </div>
+        <div class="toolbar">
+          <button class="pill accent" id="plPlayBtn">▶ Lire</button>
+          <button class="pill" id="plShuffleBtn">🔀 Aléatoire</button>
+          <button class="pill" id="plAddBtn">＋ Morceaux</button>
+          <button class="pill" id="plStartMarkerBtn">🚩 Repère au début</button>
+        </div>
+        <div class="chips" id="plTagFilter"></div>
+        <ol class="rows" id="plTracks"></ol>
+        <div class="empty hidden" id="plTracksEmpty"><p>Playlist vide.</p></div>
+      </div>
+    </section>
+
+    <!-- ================= Réglages ================= -->
+    <section class="view hidden" id="view-settings">
       <div class="card setting">
         <div class="setting-head"><span>Durée du fondu</span><strong id="fadeVal">6 s</strong></div>
-        <input type="range" id="fade" min="0" max="20" step="0.5" value="6">
+        <input type="range" id="fadeRange" min="0" max="20" step="0.5" value="6">
       </div>
       <div class="card setting">
         <div class="setting-head"><span>Forme du fondu</span></div>
-        <div class="segmented" id="curve">
+        <div class="segmented" id="curveSeg">
           <button data-v="equal">Égale puissance</button>
           <button data-v="smooth">Douce</button>
           <button data-v="linear">Linéaire</button>
         </div>
-        <svg class="curve-preview" id="curvePreview" viewBox="0 0 100 40" preserveAspectRatio="none"></svg>
+        <svg class="curve" id="curvePreview" viewBox="0 0 100 40" preserveAspectRatio="none"></svg>
       </div>
-      <label class="card setting toggle">
-        <span>Fondu automatique en fin de morceau<small>Le suivant démarre pendant que l'actuel s'éteint</small></span>
-        <input type="checkbox" id="auto">
-      </label>
-      <label class="card setting toggle">
-        <span>Fondu sur pause / reprise<small>Évite les coupures brutales</small></span>
-        <input type="checkbox" id="fadePause">
-      </label>
-      <label class="card setting toggle">
-        <span>Fondu aussi sur ⏮ / ⏭<small>Sinon passage rapide (1 s)</small></span>
-        <input type="checkbox" id="fadeSkip">
-      </label>
+      <label class="card setting toggle"><span>Fondu automatique en fin de morceau<small>Le suivant démarre pendant que l'actuel s'éteint</small></span><input type="checkbox" id="autoChk"></label>
+      <label class="card setting toggle"><span>Fondu quand je skip<small>⏮ / ⏭ et choix d'un morceau sans coupure brute</small></span><input type="checkbox" id="skipChk"></label>
+      <label class="card setting toggle"><span>Fondu sur pause / reprise</span><input type="checkbox" id="pauseChk"></label>
+      <label class="card setting toggle"><span>Fond ambiant animé<small>La couleur suit le morceau en cours</small></span><input type="checkbox" id="ambientChk"></label>
       <div class="card setting">
         <div class="setting-head"><span>Volume général</span><strong id="volVal">100 %</strong></div>
-        <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+        <input type="range" id="volRange" min="0" max="1" step="0.01" value="1">
       </div>
-      <p class="about">Fondu musique · lit les musiques de ton téléphone (MP3, M4A, OGG, FLAC, WAV…) et enchaîne les morceaux en fondu. Tout reste sur l'appareil.</p>
+      <div class="card setting">
+        <div class="setting-head"><span>Bibliothèque</span></div>
+        <div class="toolbar flush">
+          <button class="pill" id="dedupLibBtn">🧹 Masquer les doublons</button>
+          <button class="pill" id="rescanBtn">↻ Revalider les fichiers</button>
+        </div>
+        <small class="muted" id="dedupInfo"></small>
+      </div>
+      <p class="about">Boom Player · version téléphone de Mes Projets. Lit les musiques du téléphone et de la carte SD, et les enchaîne en fondu. Les playlists exportées depuis Boom Player sur PC (⤓ .json) s'importent ici : les morceaux se retrouvent par nom de fichier.</p>
     </section>
   </main>
+
+  <!-- Mini player + navigation -->
+  <div class="bottom">
+    <div class="mini glass hidden" id="mini">
+      <div class="mini-progress"><i id="miniBar"></i></div>
+      <div class="mini-art" id="miniArt"></div>
+      <div class="mini-txt" id="miniOpen"><div class="mini-title" id="miniTitle"></div><div class="mini-artist" id="miniArtist"></div></div>
+      <button class="ic sm" id="miniPlay" aria-label="Lecture"></button>
+      <button class="ic sm" id="miniNext" aria-label="Suivant"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+    </div>
+    <div class="selbar glass hidden" id="selBar">
+      <span id="selCount">0</span>
+      <button class="pill" data-sel="queue">＋ File</button>
+      <button class="pill" data-sel="playlist">＋ Playlist</button>
+      <button class="pill" data-sel="tag">🏷 Balise</button>
+      <button class="pill" data-sel="cancel">✕</button>
+    </div>
+    <nav class="tabs glass" role="tablist">
+      <button data-view="now" class="active"><svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>Lecture</button>
+      <button data-view="library"><svg viewBox="0 0 24 24"><path d="M4 6H2v14a2 2 0 0 0 2 2h14v-2H4V6zm16-4H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/></svg>Bibliothèque</button>
+      <button data-view="playlists"><svg viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18A3 3 0 1 0 19 17V8h3V6h-5z"/></svg>Playlists</button>
+      <button data-view="settings"><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .45-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.48 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>Réglages</button>
+    </nav>
+  </div>
+
+  <!-- Bottom sheet / dialogs -->
+  <div class="scrim hidden" id="scrim"></div>
+  <div class="sheet glass hidden" id="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-grip"></div>
+    <div id="sheetBody"></div>
+  </div>
+
   <div class="toast" id="toast" role="status"></div>
   <script src="app.js"></script>
 </body>

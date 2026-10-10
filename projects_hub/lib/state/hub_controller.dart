@@ -98,6 +98,11 @@ class HubController extends ChangeNotifier {
       if (fondu.description.startsWith('Fondu enchaîné entre musiques')) fondu.description = b.description;
       added = true;
     }
+    // Earlier built-in description: refresh it unless the user changed it.
+    if (fondu != null && fondu.description == 'Tes musiques du téléphone, enchaînées en fondu.') {
+      fondu.description = fonduMusique().description;
+      added = true;
+    }
     if (added) _saveProjects();
   }
 

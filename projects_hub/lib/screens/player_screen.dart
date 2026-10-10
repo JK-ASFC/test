@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../models/project.dart';
+import '../services/exports.dart';
 import '../services/native_bridge.dart';
 
 /// Shows a web project in a full-featured WebView.
@@ -60,9 +63,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     if (widget.project.type == SourceType.builtin) {
       // Lets built-in apps ask for things a web page can't do by itself.
-      _web.addJavaScriptChannel('HubBridge', onMessageReceived: (m) {
-        if (m.message == 'requestMusicPermission') NativeBridge.requestAllFilesAccess();
-      });
+      _web.addJavaScriptChannel('HubBridge', onMessageReceived: (m) => _onBridge(m.message));
     }
 
     final platform = _web.platform;
@@ -72,6 +73,36 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ..setOnShowFileSelector(_pickFiles);
     }
     _web.loadRequest(Uri.parse(widget.url));
+  }
+
+  /// Requests from built-in apps: {"type": "requestMusicPermission" | "openUrl" | "saveFile", ...}.
+  Future<void> _onBridge(String raw) async {
+    Map<String, dynamic> msg;
+    try {
+      msg = (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } catch (_) {
+      msg = {'type': raw};
+    }
+    switch (msg['type']) {
+      case 'requestMusicPermission':
+        await NativeBridge.requestAllFilesAccess();
+      case 'openUrl':
+        final url = msg['url'];
+        if (url is String && (url.startsWith('https://') || url.startsWith('http://'))) {
+          await NativeBridge.openUrl(url);
+        }
+      case 'saveFile':
+        try {
+          final path = await saveExport('${msg['name'] ?? 'export.json'}', '${msg['content'] ?? ''}');
+          _reply('Enregistré dans ${path.replaceFirst('/storage/emulated/0/', '')}');
+        } catch (e) {
+          _reply('Enregistrement impossible : autorise l\'accès aux fichiers ($e)');
+        }
+    }
+  }
+
+  void _reply(String text) {
+    _web.runJavaScript('window.__hubReply && window.__hubReply(${jsonEncode({'text': text})})');
   }
 
   void _applySystemUi() {
