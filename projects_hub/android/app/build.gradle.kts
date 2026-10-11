@@ -60,3 +60,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // MediaSession + media-style notification for the built-in music player.
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.media:media:1.7.0")
+}

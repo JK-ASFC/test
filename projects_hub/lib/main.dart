@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'services/native_bridge.dart';
 import 'state/hub_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  NativeBridge.init();
   final hub = await HubController.load();
   runApp(ProjectsHubApp(hub: hub));
 }

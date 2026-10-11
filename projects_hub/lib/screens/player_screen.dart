@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -64,6 +65,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (widget.project.type == SourceType.builtin) {
       // Lets built-in apps ask for things a web page can't do by itself.
       _web.addJavaScriptChannel('HubBridge', onMessageReceived: (m) => _onBridge(m.message));
+      // Media notification buttons -> page.
+      NativeBridge.onMediaAction = (action, pos) {
+        if (action == 'stop') NativeBridge.mediaStop();
+        _web.runJavaScript('window.__hubMedia && window.__hubMedia(${jsonEncode(action)}, $pos)');
+      };
     }
 
     final platform = _web.platform;
@@ -91,6 +97,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
         if (url is String && (url.startsWith('https://') || url.startsWith('http://'))) {
           await NativeBridge.openUrl(url);
         }
+      case 'media':
+        if (!Platform.isAndroid) return;
+        final title = '${msg['title'] ?? ''}';
+        if (title.isEmpty) {
+          await NativeBridge.mediaStop();
+          return;
+        }
+        await NativeBridge.mediaUpdate(
+          title: title,
+          artist: '${msg['artist'] ?? ''}',
+          playing: msg['playing'] == true,
+          positionMs: (msg['position'] as num?)?.toInt() ?? 0,
+          durationMs: (msg['duration'] as num?)?.toInt() ?? 0,
+          hue: (msg['hue'] as num?)?.toInt() ?? 280,
+        );
       case 'saveFile':
         try {
           final path = await saveExport('${msg['name'] ?? 'export.json'}', '${msg['content'] ?? ''}');
@@ -120,6 +141,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    if (widget.project.type == SourceType.builtin) {
+      NativeBridge.onMediaAction = null;
+      if (Platform.isAndroid) NativeBridge.mediaStop();
+    }
     SystemChrome.setPreferredOrientations([]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();

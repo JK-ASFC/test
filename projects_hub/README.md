@@ -65,8 +65,14 @@ il fonctionne hors-ligne et se met à jour avec l'APK.
 - **« Ajouter une musique »** ouvre YouTube et notube.lol dans le
   navigateur ; le MP3 téléchargé apparaît dans la bibliothèque (dossier
   Download) après ↻.
-- Fond ambiant aux couleurs du morceau, mini-lecteur, contrôles sur l'écran
-  de verrouillage. Tout reste sur le téléphone.
+- **Notification de lecture (comme YouTube)** : titre, artiste et pochette
+  aux couleurs du morceau, boutons ⏮ −10 s ⏯ +10 s ⏭, barre de progression
+  qu'on fait glisser (Android 13+), aussi sur l'écran verrouillé et avec les
+  boutons d'un casque Bluetooth. C'est un service Android au premier plan :
+  la musique continue écran éteint ou appli en arrière-plan. Fermer la
+  notification met en pause ; elle revient dès qu'on relance la lecture.
+- Fond ambiant aux couleurs du morceau, mini-lecteur. Tout reste sur le
+  téléphone.
 
 Les fondus sont calculés par Web Audio (horloge audio, pas des minuteurs),
 donc restent fluides écran éteint. Seules les applis intégrées ont accès à

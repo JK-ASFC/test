@@ -187,6 +187,8 @@ function makeDeck(name) {
     }
   });
   el.addEventListener('play', renderPlayState);
+  el.addEventListener('seeked', () => { if (deck === decks[active]) syncMedia(); });
+  el.addEventListener('durationchange', () => { if (deck === decks[active]) syncMedia(); });
   el.addEventListener('pause', renderPlayState);
   return deck;
 }
@@ -320,6 +322,7 @@ async function crossfadeTo(pos, dur = S.settings.fade) {
   }
   applyAmbient(key);
   updateMediaSession();
+  syncMedia();
   save();
   renderAll();
 }
@@ -726,7 +729,7 @@ async function rename(key) {
     customArtist: r.artist && r.artist !== (t?.pArtist || meta(key).artist) ? r.artist : undefined,
   });
   renderAll();
-  if (decks[active].key === key) updateMediaSession();
+  if (decks[active].key === key) { updateMediaSession(); syncMedia(); }
 }
 
 async function renamePlaylist(p) {
@@ -873,6 +876,7 @@ function renderPlayState() {
   $('#npArt').classList.toggle('playing', playing);
   $$('#queueList .eq').forEach((e) => e.classList.toggle('paused', !playing));
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+  syncMedia();
 }
 
 function renderNow() {
@@ -1111,6 +1115,60 @@ function updateMediaSession() {
     navigator.mediaSession.metadata = k ? new MediaMetadata({ title: titleOf(k), artist: artistOf(k), album: 'Boom Player' }) : null;
   } catch (_) { /* non supporté */ }
 }
+
+// ---------- notification Android (comme YouTube) ----------
+
+let mediaDismissed = false;   // notification fermée : ne pas la recréer tant qu'on ne relance pas
+let mediaLast = '';
+
+/** Sends what is playing to Mes Projets, which shows the media notification. */
+function syncMedia() {
+  const d = decks[active];
+  if (!d.key || !window.HubBridge) return;
+  const playing = isPlaying(d);
+  if (playing) mediaDismissed = false;
+  if (mediaDismissed) return;
+  const msg = {
+    type: 'media',
+    title: titleOf(d.key),
+    artist: artistOf(d.key) || 'Boom Player',
+    playing,
+    position: Math.round((d.el.currentTime || 0) * 1000),
+    duration: isFinite(d.el.duration) ? Math.round(d.el.duration * 1000) : 0,
+    hue: hash(d.key) % 360,
+  };
+  const sig = JSON.stringify(msg);
+  if (sig === mediaLast) return;
+  mediaLast = sig;
+  bridge(msg);
+}
+
+function seekBy(seconds) {
+  const el = decks[active].el;
+  if (!decks[active].key || !isFinite(el.duration)) return;
+  el.currentTime = Math.max(0, Math.min(el.duration - 0.5, el.currentTime + seconds));
+}
+
+/** Buttons of the notification / lock screen / headset, relayed by Mes Projets. */
+window.__hubMedia = (action, positionMs) => {
+  const d = decks[active];
+  switch (action) {
+    case 'play': if (!isPlaying(d)) togglePlay(); break;
+    case 'pause': if (isPlaying(d)) togglePlay(); break;
+    case 'next': goNext(); break;
+    case 'prev': goPrev(); break;
+    case 'forward': seekBy(10); break;
+    case 'rewind': seekBy(-10); break;
+    case 'seek':
+      if (positionMs >= 0 && d.key && isFinite(d.el.duration)) d.el.currentTime = Math.min(d.el.duration - 0.5, positionMs / 1000);
+      break;
+    case 'stop':
+      mediaDismissed = true;
+      if (isPlaying(d)) togglePlay();
+      break;
+    default: break;
+  }
+};
 
 function switchView(v) {
   view = v;
@@ -1441,6 +1499,8 @@ renderSettings();
 applyAmbient(S.queue.keys[S.queue.pos]);
 renderAll();
 requestAnimationFrame(tick);
+// Recale la position de la notification de temps en temps (elle avance seule entre deux).
+setInterval(() => { if (isPlaying(decks[active])) { mediaLast = ''; syncMedia(); } }, 15000);
 loadLibrary().then(() => { if (!S.queue.keys.length && !S.playlists.length) switchView('library'); });
 
 // Pour déboguer depuis l'inspecteur de la WebView.

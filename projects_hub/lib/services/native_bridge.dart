@@ -21,4 +21,41 @@ class NativeBridge {
 
   static Future<void> requestAllFilesAccess() =>
       _ch.invokeMethod<void>('requestAllFilesAccess');
+
+  // ---------- Media notification (built-in music player) ----------
+
+  /// Called with (action, positionMs) when a button of the media
+  /// notification is pressed: play, pause, next, prev, seek, rewind,
+  /// forward, stop.
+  static void Function(String action, int positionMs)? onMediaAction;
+
+  /// Listens for calls coming from MainActivity. Call once at startup.
+  static void init() {
+    _ch.setMethodCallHandler((call) async {
+      if (call.method == 'mediaAction') {
+        final args = (call.arguments as Map).cast<String, Object?>();
+        onMediaAction?.call(args['action'] as String? ?? '', (args['position'] as num?)?.toInt() ?? -1);
+      }
+    });
+  }
+
+  /// Shows/updates the media notification (title, artist, play state, position).
+  static Future<void> mediaUpdate({
+    required String title,
+    required String artist,
+    required bool playing,
+    required int positionMs,
+    required int durationMs,
+    int hue = 280,
+  }) =>
+      _ch.invokeMethod<void>('mediaUpdate', {
+        'title': title,
+        'artist': artist,
+        'playing': playing,
+        'position': positionMs,
+        'duration': durationMs,
+        'hue': hue,
+      });
+
+  static Future<void> mediaStop() => _ch.invokeMethod<void>('mediaStop');
 }

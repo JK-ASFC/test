@@ -1,5 +1,6 @@
 package com.jkasfc.projects_hub
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,11 +13,36 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var askedNotifications = false
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "projects_hub/native")
-            .setMethodCallHandler { call, result ->
+        val ch = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "projects_hub/native")
+        // Buttons of the media notification -> Dart -> web player.
+        MediaPlaybackService.onAction = { action, position ->
+            ch.invokeMethod("mediaAction", mapOf("action" to action, "position" to position))
+        }
+        ch.setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "mediaUpdate" -> {
+                        askNotificationPermission()
+                        MediaPlaybackService.update(
+                            this,
+                            MediaInfo(
+                                title = call.argument<String>("title") ?: "",
+                                artist = call.argument<String>("artist") ?: "",
+                                playing = call.argument<Boolean>("playing") ?: false,
+                                positionMs = (call.argument<Number>("position") ?: 0).toLong(),
+                                durationMs = (call.argument<Number>("duration") ?: 0).toLong(),
+                                hue = (call.argument<Number>("hue") ?: 280).toInt(),
+                            ),
+                        )
+                        result.success(null)
+                    }
+                    "mediaStop" -> {
+                        MediaPlaybackService.stop(this)
+                        result.success(null)
+                    }
                     "isAppInstalled" -> {
                         val pkg = call.argument<String>("package") ?: ""
                         result.success(launchIntentFor(pkg) != null)
@@ -49,6 +75,21 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onDestroy() {
+        // The web player dies with the activity: remove its notification too.
+        MediaPlaybackService.onAction = null
+        MediaPlaybackService.stop(this)
+        super.onDestroy()
+    }
+
+    private fun askNotificationPermission() {
+        if (askedNotifications || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        askedNotifications = true
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 43)
+        }
     }
 
     private fun launchIntentFor(pkg: String): Intent? =
