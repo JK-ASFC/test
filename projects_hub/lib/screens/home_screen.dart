@@ -9,6 +9,7 @@ import '../services/launcher.dart';
 import '../services/native_bridge.dart';
 import '../services/project_files.dart';
 import '../state/hub_controller.dart';
+import '../widgets/mini_player.dart';
 import '../widgets/project_card.dart';
 import 'github_browser_screen.dart';
 import 'project_editor_screen.dart';
@@ -445,6 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   content,
                 ])
               : content,
+          bottomNavigationBar: MiniPlayerBar(hub: hub),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: _addMenu,
             icon: const Icon(Icons.add),

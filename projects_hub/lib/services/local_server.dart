@@ -27,13 +27,18 @@ class LocalServer {
   int get port => _server.port;
   String get origin => 'http://127.0.0.1:$port';
 
-  static LocalServer? _current;
+  /// Servers currently running, by port. Several can run at once: the
+  /// music player keeps serving in the background while another project
+  /// is open.
+  static final Map<int, LocalServer> _running = {};
 
   /// Starts (or reuses) the server for [root] on [preferredPort].
   static Future<LocalServer> start(String root, int preferredPort, {MusicLibrary? music}) async {
-    final cur = _current;
-    if (cur != null && cur.root == root && cur.port == preferredPort && cur.music == music) return cur;
-    await stopCurrent();
+    final existing = preferredPort == 0 ? null : _running[preferredPort];
+    if (existing != null) {
+      if (existing.root == root && existing.music == music) return existing;
+      await existing.stop();
+    }
     HttpServer server;
     try {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, preferredPort);
@@ -44,14 +49,19 @@ class LocalServer {
     }
     final s = LocalServer._(server, root, music);
     server.listen(s._handle, onError: (_) {});
-    _current = s;
+    _running[s.port] = s;
     return s;
   }
 
-  static Future<void> stopCurrent() async {
-    final cur = _current;
-    _current = null;
-    await cur?._server.close(force: true);
+  Future<void> stop() async {
+    _running.remove(port);
+    await _server.close(force: true);
+  }
+
+  static Future<void> stopAll() async {
+    for (final s in _running.values.toList()) {
+      await s.stop();
+    }
   }
 
   /// Stable port in 20000..39999 derived from the project id (FNV-1a).

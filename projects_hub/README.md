@@ -71,6 +71,12 @@ il fonctionne hors-ligne et se met à jour avec l'APK.
   boutons d'un casque Bluetooth. C'est un service Android au premier plan :
   la musique continue écran éteint ou appli en arrière-plan. Fermer la
   notification met en pause ; elle revient dès qu'on relance la lecture.
+- **Lecture en arrière-plan** : la flèche ⌄ (ou le bouton retour) réduit
+  le lecteur sans couper la musique. Elle continue pendant que tu navigues
+  dans Mes Projets, ouvres un autre projet ou une autre appli ; une barre
+  « lecture en cours » (⏮ ⏯ ⏭ ✕) s'affiche en bas de l'accueil, un appui
+  la rouvre. « Fermer et arrêter la musique » dans le menu ⋮ (ou ✕) coupe
+  tout.
 - Fond ambiant aux couleurs du morceau, mini-lecteur. Tout reste sur le
   téléphone.
 

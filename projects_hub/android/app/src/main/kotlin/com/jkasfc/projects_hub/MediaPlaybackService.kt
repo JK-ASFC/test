@@ -18,6 +18,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
@@ -97,6 +98,7 @@ class MediaPlaybackService : Service() {
     private var artKey = ""
     private var art: Bitmap? = null
     private val main = Handler(Looper.getMainLooper())
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -139,6 +141,7 @@ class MediaPlaybackService : Service() {
 
     override fun onDestroy() {
         instance = null
+        holdWakeLock(false)
         session.isActive = false
         session.release()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
@@ -149,8 +152,19 @@ class MediaPlaybackService : Service() {
         main.post { onAction?.invoke(action, position) }
     }
 
+    /** Keeps the CPU awake while music plays with the screen off. */
+    private fun holdWakeLock(hold: Boolean) {
+        val lock = wakeLock ?: (getSystemService(Context.POWER_SERVICE) as PowerManager)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MesProjets:playback")
+            .apply { setReferenceCounted(false) }
+            .also { wakeLock = it }
+        if (hold && !lock.isHeld) lock.acquire(6 * 60 * 60 * 1000L)
+        if (!hold && lock.isHeld) lock.release()
+    }
+
     fun apply(newInfo: MediaInfo) {
         info = newInfo
+        holdWakeLock(info.playing)
         val key = "${info.title}|${info.hue}"
         if (key != artKey) {
             artKey = key

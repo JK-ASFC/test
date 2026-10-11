@@ -1,133 +1,41 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../models/project.dart';
-import '../services/exports.dart';
+import '../services/background_player.dart';
 import '../services/native_bridge.dart';
+import '../services/web_session.dart';
 
-/// Shows a web project in a full-featured WebView.
+/// Shows a [WebSession] full screen. For the built-in music player the
+/// session outlives this screen: closing it keeps the music playing in the
+/// background (see [BackgroundPlayer]).
 class PlayerScreen extends StatefulWidget {
-  const PlayerScreen({super.key, required this.project, required this.url});
+  const PlayerScreen({super.key, required this.session});
 
-  final Project project;
-  final String url;
+  final WebSession session;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  late final WebViewController _web;
-  int _progress = 0;
-  String? _title;
-  String? _error;
-  late bool _immersive = widget.project.fullscreen;
+  WebSession get _s => widget.session;
+  WebViewController get _web => _s.controller;
+  Project get _project => _s.project;
+  late bool _immersive = _project.fullscreen;
+  late final bool _background = _project.type == SourceType.builtin;
 
   @override
   void initState() {
     super.initState();
     _applySystemUi();
-    _web = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..setNavigationDelegate(NavigationDelegate(
-        onProgress: (p) => setState(() => _progress = p),
-        onPageStarted: (_) => setState(() => _error = null),
-        onPageFinished: (_) async {
-          final t = await _web.getTitle();
-          if (mounted) setState(() => _title = t);
-        },
-        onWebResourceError: (e) {
-          if (e.isForMainFrame ?? true) {
-            setState(() => _error = e.description);
-          }
-        },
-        onNavigationRequest: (req) {
-          final u = Uri.tryParse(req.url);
-          if (u != null && !const {'http', 'https', 'about', 'data', 'blob', 'file'}.contains(u.scheme)) {
-            // mailto:, tel:, intent:... -> let Android handle it.
-            NativeBridge.openUrl(req.url);
-            return NavigationDecision.prevent;
-          }
-          return NavigationDecision.navigate;
-        },
-      ))
-      ..setOnJavaScriptAlertDialog((r) => _alert(r.message))
-      ..setOnJavaScriptConfirmDialog((r) => _confirm(r.message))
-      ..setOnJavaScriptTextInputDialog((r) => _prompt(r.message, r.defaultText));
-
-    if (widget.project.type == SourceType.builtin) {
-      // Lets built-in apps ask for things a web page can't do by itself.
-      _web.addJavaScriptChannel('HubBridge', onMessageReceived: (m) => _onBridge(m.message));
-      // Media notification buttons -> page.
-      NativeBridge.onMediaAction = (action, pos) {
-        if (action == 'stop') NativeBridge.mediaStop();
-        _web.runJavaScript('window.__hubMedia && window.__hubMedia(${jsonEncode(action)}, $pos)');
-      };
-    }
-
-    final platform = _web.platform;
-    if (platform is AndroidWebViewController) {
-      platform
-        ..setMediaPlaybackRequiresUserGesture(false)
-        ..setOnShowFileSelector(_pickFiles);
-    }
-    _web.loadRequest(Uri.parse(widget.url));
-  }
-
-  /// Requests from built-in apps: {"type": "requestMusicPermission" | "openUrl" | "saveFile", ...}.
-  Future<void> _onBridge(String raw) async {
-    Map<String, dynamic> msg;
-    try {
-      msg = (jsonDecode(raw) as Map).cast<String, dynamic>();
-    } catch (_) {
-      msg = {'type': raw};
-    }
-    switch (msg['type']) {
-      case 'requestMusicPermission':
-        await NativeBridge.requestAllFilesAccess();
-      case 'openUrl':
-        final url = msg['url'];
-        if (url is String && (url.startsWith('https://') || url.startsWith('http://'))) {
-          await NativeBridge.openUrl(url);
-        }
-      case 'media':
-        if (!Platform.isAndroid) return;
-        final title = '${msg['title'] ?? ''}';
-        if (title.isEmpty) {
-          await NativeBridge.mediaStop();
-          return;
-        }
-        await NativeBridge.mediaUpdate(
-          title: title,
-          artist: '${msg['artist'] ?? ''}',
-          playing: msg['playing'] == true,
-          positionMs: (msg['position'] as num?)?.toInt() ?? 0,
-          durationMs: (msg['duration'] as num?)?.toInt() ?? 0,
-          hue: (msg['hue'] as num?)?.toInt() ?? 280,
-        );
-      case 'saveFile':
-        try {
-          final path = await saveExport('${msg['name'] ?? 'export.json'}', '${msg['content'] ?? ''}');
-          _reply('Enregistré dans ${path.replaceFirst('/storage/emulated/0/', '')}');
-        } catch (e) {
-          _reply('Enregistrement impossible : autorise l\'accès aux fichiers ($e)');
-        }
-    }
-  }
-
-  void _reply(String text) {
-    _web.runJavaScript('window.__hubReply && window.__hubReply(${jsonEncode({'text': text})})');
+    _s.screenContext = () => mounted ? context : null;
+    if (_background) BackgroundPlayer.instance.screenOpen = true;
   }
 
   void _applySystemUi() {
-    SystemChrome.setPreferredOrientations(switch (widget.project.orientation) {
+    SystemChrome.setPreferredOrientations(switch (_project.orientation) {
       PlayerOrientation.portrait => [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown],
       PlayerOrientation.landscape => [
           DeviceOrientation.landscapeLeft,
@@ -141,66 +49,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
-    if (widget.project.type == SourceType.builtin) {
-      NativeBridge.onMediaAction = null;
-      if (Platform.isAndroid) NativeBridge.mediaStop();
-    }
+    _s.screenContext = null;
     SystemChrome.setPreferredOrientations([]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
-  Future<List<String>> _pickFiles(FileSelectorParams params) async {
-    final types = params.acceptTypes.where((t) => t.isNotEmpty).join(',');
-    final type = types.startsWith('image/') && !types.contains(',')
-        ? FileType.image
-        : types.startsWith('video/') && !types.contains(',')
-            ? FileType.video
-            : types.startsWith('audio/') && !types.contains(',')
-                ? FileType.audio
-                : FileType.any;
-    final res = await FilePicker.pickFiles(type: type);
-    final picked = params.mode == FileSelectorMode.openMultiple ? res : res.take(1);
-    return picked.where((f) => f.path != null).map((f) => Uri.file(f.path!).toString()).toList();
-  }
-
-  Future<void> _alert(String msg) => showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          content: Text(msg),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-        ),
-      );
-
-  Future<bool> _confirm(String msg) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          content: Text(msg),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('OK')),
-          ],
-        ),
-      ) ??
-      false;
-
-  Future<String> _prompt(String msg, String? def) async {
-    final ctl = TextEditingController(text: def);
-    final r = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(msg),
-          TextField(controller: ctl, autofocus: true),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text), child: const Text('OK')),
-        ],
-      ),
-    );
-    return r ?? '';
+  /// Closes the screen and also stops the music.
+  Future<void> _closeAndStop() async {
+    if (_background) await BackgroundPlayer.instance.stop();
+    if (mounted) Navigator.pop(context);
   }
 
   Future<void> _handleBack() async {
@@ -235,7 +93,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             title: const Text('Page d\'accueil du projet'),
             onTap: () {
               Navigator.pop(ctx);
-              _web.loadRequest(Uri.parse(widget.url));
+              _web.loadRequest(Uri.parse(_s.url));
             },
           ),
           ListTile(
@@ -246,24 +104,42 @@ class _PlayerScreenState extends State<PlayerScreen> {
               _toggleImmersive();
             },
           ),
-          if (widget.project.type == SourceType.url)
+          if (_project.type == SourceType.url)
             ListTile(
               leading: const Icon(Icons.open_in_browser),
               title: const Text('Ouvrir dans le navigateur'),
               onTap: () async {
                 Navigator.pop(ctx);
                 final u = await _web.currentUrl();
-                NativeBridge.openUrl(u ?? widget.url);
+                NativeBridge.openUrl(u ?? _s.url);
               },
             ),
-          ListTile(
-            leading: const Icon(Icons.close),
-            title: const Text('Fermer le projet'),
-            onTap: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-            },
-          ),
+          if (_background) ...[
+            ListTile(
+              leading: const Icon(Icons.picture_in_picture_alt_outlined),
+              title: const Text('Réduire (la musique continue)'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.stop_circle_outlined),
+              title: const Text('Fermer et arrêter la musique'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _closeAndStop();
+              },
+            ),
+          ] else
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Fermer le projet'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+              },
+            ),
         ]),
       ),
     );
@@ -271,38 +147,46 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(widget.project.color);
+    final color = Color(_project.color);
     final body = Stack(children: [
       WebViewWidget(controller: _web),
-      if (_progress < 100)
-        Align(
-          alignment: Alignment.topCenter,
-          child: LinearProgressIndicator(value: _progress / 100, color: color, minHeight: 3),
-        ),
-      if (_error != null)
-        Positioned.fill(
-          child: ColoredBox(
-            color: Theme.of(context).colorScheme.surface,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.wifi_off, size: 48),
-                  const SizedBox(height: 12),
-                  Text('Impossible de charger la page', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  Text(_error!, textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: () => _web.reload(),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Réessayer'),
+      ValueListenableBuilder<int>(
+        valueListenable: _s.progress,
+        builder: (_, p, _) => p < 100
+            ? Align(
+                alignment: Alignment.topCenter,
+                child: LinearProgressIndicator(value: p / 100, color: color, minHeight: 3),
+              )
+            : const SizedBox.shrink(),
+      ),
+      ValueListenableBuilder<String?>(
+        valueListenable: _s.error,
+        builder: (_, err, _) => err == null
+            ? const SizedBox.shrink()
+            : Positioned.fill(
+                child: ColoredBox(
+                  color: Theme.of(context).colorScheme.surface,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.wifi_off, size: 48),
+                        const SizedBox(height: 12),
+                        Text('Impossible de charger la page', style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Text(err, textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: () => _web.reload(),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Réessayer'),
+                        ),
+                      ]),
+                    ),
                   ),
-                ]),
+                ),
               ),
-            ),
-          ),
-        ),
+      ),
       if (_immersive)
         Positioned(
           right: 8,
@@ -333,9 +217,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 backgroundColor: color,
                 foregroundColor:
                     ThemeData.estimateBrightnessForColor(color) == Brightness.dark ? Colors.white : Colors.black,
-                title: Text(_title?.isNotEmpty == true ? _title! : widget.project.name,
-                    overflow: TextOverflow.ellipsis),
-                leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                title: ValueListenableBuilder<String?>(
+                  valueListenable: _s.title,
+                  builder: (_, t, _) =>
+                      Text(t?.isNotEmpty == true ? t! : _project.name, overflow: TextOverflow.ellipsis),
+                ),
+                leading: IconButton(
+                  icon: Icon(_background ? Icons.keyboard_arrow_down : Icons.close),
+                  tooltip: _background ? 'Réduire (la musique continue)' : 'Fermer',
+                  onPressed: () => Navigator.pop(context),
+                ),
                 actions: [
                   IconButton(icon: const Icon(Icons.arrow_back), onPressed: _handleBack, tooltip: 'Page précédente'),
                   IconButton(icon: const Icon(Icons.refresh), onPressed: () => _web.reload(), tooltip: 'Recharger'),

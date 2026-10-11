@@ -82,7 +82,7 @@ void main() {
         await res.drain<void>();
       } finally {
         client.close(force: true);
-        await LocalServer.stopCurrent();
+        await LocalServer.stopAll();
       }
     });
   });
@@ -211,7 +211,7 @@ void main() {
       try {
         var server = await LocalServer.start(tmp.path, 0);
         expect(await status('${server.origin}/__hub/music'), 404);
-        await LocalServer.stopCurrent();
+        await LocalServer.stopAll();
 
         server = await LocalServer.start(tmp.path, 0, music: MusicLibrary(roots: [tmp.path]));
         final r = await (await client.getUrl(Uri.parse('${server.origin}/__hub/music'))).close();
@@ -222,7 +222,7 @@ void main() {
         expect(await status('${server.origin}/__hub/music/file?p=%2Fetc%2Fpasswd'), 404);
       } finally {
         client.close(force: true);
-        await LocalServer.stopCurrent();
+        await LocalServer.stopAll();
       }
     });
 

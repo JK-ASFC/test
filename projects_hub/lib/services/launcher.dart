@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import '../models/project.dart';
 import '../screens/player_screen.dart';
 import '../state/hub_controller.dart';
+import 'background_player.dart';
 import 'local_server.dart';
 import 'music_library.dart';
 import 'native_bridge.dart';
+import 'web_session.dart';
 
 /// Kept for the whole session so the music scan is only redone on demand.
 MusicLibrary? _music;
@@ -51,7 +53,18 @@ Future<void> openProject(BuildContext context, HubController hub, Project projec
     return;
   }
 
+  // Music player already running in the background: just show it again.
+  final bg = BackgroundPlayer.instance;
+  if (project.type == SourceType.builtin && bg.session?.project.id == project.id) {
+    await hub.markOpened(project);
+    if (!context.mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PlayerScreen(session: bg.session!)));
+    await bg.screenClosed();
+    return;
+  }
+
   String url;
+  LocalServer? server;
   if (project.type == SourceType.url) {
     url = project.url?.trim() ?? '';
     if (url.isEmpty) return toast('Aucune adresse renseignée.');
@@ -103,17 +116,27 @@ Future<void> openProject(BuildContext context, HubController hub, Project projec
             hasPermission: Platform.isAndroid ? NativeBridge.hasAllFilesAccess : null,
           ))
         : null;
-    final server = await LocalServer.start(root, LocalServer.portFor(project.id), music: music);
+    server = await LocalServer.start(root, LocalServer.portFor(project.id), music: music);
     final entry = project.entry.trim().replaceFirst(RegExp(r'^/+'), '');
     url = '${server.origin}/${entry.split('/').map(Uri.encodeComponent).join('/')}';
   }
 
   await hub.markOpened(project);
+  if (!context.mounted) {
+    await server?.stop();
+    return;
+  }
+  final session = WebSession(project: project, url: url, server: server);
+  // Built-in music player: survives its screen (background play).
+  final background = project.type == SourceType.builtin;
+  if (background) await bg.adopt(session);
   if (!context.mounted) return;
-  await Navigator.of(context).push(MaterialPageRoute<void>(
-    builder: (_) => PlayerScreen(project: project, url: url),
-  ));
-  await LocalServer.stopCurrent();
+  await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PlayerScreen(session: session)));
+  if (background) {
+    await bg.screenClosed();
+  } else {
+    await session.close();
+  }
 }
 
 /// Downloads the branch if it isn't on the phone yet, or if a newer commit

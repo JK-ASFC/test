@@ -358,7 +358,9 @@ function togglePlay() {
     }
     return;
   }
-  const soft = S.settings.fadePause ? 0.6 : 0;
+  // En arrière-plan (appli réduite, écran éteint) les minuteurs sont ralentis :
+  // pause immédiate pour que la notification réagisse tout de suite.
+  const soft = S.settings.fadePause && document.visibilityState === 'visible' ? 0.6 : 0;
   if (isPlaying(d)) {
     clearTimeout(fadeTimer);
     const other = decks[1 - active];
@@ -366,7 +368,8 @@ function togglePlay() {
     fading = false;
     ramp(d, 0, soft);
     clearTimeout(pauseTimer);
-    pauseTimer = setTimeout(() => d.el.pause(), soft * 1000);
+    if (soft > 0) pauseTimer = setTimeout(() => d.el.pause(), soft * 1000);
+    else d.el.pause();
   } else {
     clearTimeout(pauseTimer);
     ramp(d, 0, 0);
